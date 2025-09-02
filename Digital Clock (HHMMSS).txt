@@ -1,0 +1,101 @@
+//Digital Clock (HH:MM:SS)
+//code
+//============================
+// Digital Clock (HH:MM:SS)
+// Simulation Friendly Version
+//============================
+module digital_clock(
+    input wire clk,       // fast clock from testbench
+    input wire reset,     // async reset
+    output reg [4:0] hours,   // 0-23
+    output reg [5:0] minutes, // 0-59
+    output reg [5:0] seconds  // 0-59
+);
+
+    //========================
+    // Small Clock Divider for Simulation
+    //========================
+    reg [3:0] counter;  
+    reg one_hz_clk;
+
+    always @(posedge clk or posedge reset) begin
+        if (reset) begin
+            counter <= 0;
+            one_hz_clk <= 0;
+        end else begin
+            if (counter == 4) begin   // toggle every 5 cycles
+                counter <= 0;
+                one_hz_clk <= ~one_hz_clk;
+            end else begin
+                counter <= counter + 1;
+            end
+        end
+    end
+
+    //========================
+    // Time Counters
+    //========================
+    always @(posedge one_hz_clk or posedge reset) begin
+        if (reset) begin
+            seconds <= 0;
+            minutes <= 0;
+            hours   <= 0;
+        end else begin
+            if (seconds == 59) begin
+                seconds <= 0;
+                if (minutes == 59) begin
+                    minutes <= 0;
+                    if (hours == 23) begin
+                        hours <= 0;
+                    end else begin
+                        hours <= hours + 1;
+                    end
+                end else begin
+                    minutes <= minutes + 1;
+                end
+            end else begin
+                seconds <= seconds + 1;
+            end
+        end
+    end
+
+endmodule
+
+
+
+
+//testbench
+`timescale 1ns/1ps
+
+module tb_digital_clock;
+    reg clk, reset;
+    wire [4:0] hours;
+    wire [5:0] minutes;
+    wire [5:0] seconds;
+
+    // Instantiate the clock
+    digital_clock uut (
+        .clk(clk),
+        .reset(reset),
+        .hours(hours),
+        .minutes(minutes),
+        .seconds(seconds)
+    );
+
+    // Clock generator (10ns period = 100MHz equivalent)
+    always #5 clk = ~clk;
+
+    initial begin
+        clk = 0;
+        reset = 1;
+        #20 reset = 0;
+
+        // Run for some simulated time
+        #2000 $finish;
+    end
+
+    // Monitor time
+    initial begin
+        $monitor("Time=%0t | %0d:%0d:%0d", $time, hours, minutes, seconds);
+    end
+endmodule
